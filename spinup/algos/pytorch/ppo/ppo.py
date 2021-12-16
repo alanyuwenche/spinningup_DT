@@ -88,7 +88,7 @@ class PPOBuffer:
 def ppo(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0, 
         steps_per_epoch=4000, epochs=50, gamma=0.99, clip_ratio=0.2, pi_lr=3e-4,
         vf_lr=1e-3, train_pi_iters=80, train_v_iters=80, lam=0.97, max_ep_len=1000,
-        target_kl=0.01, logger_kwargs=dict(), save_freq=10):
+        target_kl=0.01, logger_kwargs=dict(), save_freq=10, criter=500):
     """
     Proximal Policy Optimization (by clipping), 
 
@@ -335,7 +335,7 @@ def ppo(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         # Log info about epoch
         logger.log_tabular('Epoch', epoch)
         logger.log_tabular('EpRet', with_min_and_max=True)
-        if logger.log_current_row['AverageEpRet'] > 500:#20211215
+        if logger.log_current_row['AverageEpRet'] > criter:#20211215
           logger.save_state({'env': env}, itr=epoch)
 
         logger.log_tabular('EpLen', average_only=True)
