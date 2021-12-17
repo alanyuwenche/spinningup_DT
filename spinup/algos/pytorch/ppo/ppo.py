@@ -203,6 +203,10 @@ def ppo(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
     seed += 10000 * proc_id()
     torch.manual_seed(seed)
     np.random.seed(seed)
+    random.seed(seed)#20211217 自己加入
+
+
+
 
     # Instantiate environment
     env = env_fn()
