@@ -133,3 +133,7 @@ class MLPActorCritic(nn.Module):
 
     def act(self, obs):
         return self.step(obs)[0]
+
+    def actT(self, obs):#測試用
+        aa = self.pi.logits_net(obs)
+        return aa.argmax().item()    
