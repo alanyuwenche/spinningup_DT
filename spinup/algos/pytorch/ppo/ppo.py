@@ -3,6 +3,7 @@ import torch
 from torch.optim import Adam
 import gym
 import time
+import random
 import spinup.algos.pytorch.ppo.core as core
 from spinup.utils.logx import EpochLogger
 from spinup.utils.mpi_pytorch import setup_pytorch_for_mpi, sync_params, mpi_avg_grads
@@ -203,7 +204,7 @@ def ppo(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
     seed += 10000 * proc_id()
     torch.manual_seed(seed)
     np.random.seed(seed)
-    random.seed(seed)#20211217 自己加入
+    #random.seed(seed)#20211217 自己加入
 
 
 
@@ -300,6 +301,7 @@ def ppo(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
 
     # Main loop: collect experience in env and update/log each epoch
     for epoch in range(epochs):
+        #Ep = 0 #計算使用天數
         for t in range(local_steps_per_epoch):
             a, v, logp = ac.step(torch.as_tensor(o, dtype=torch.float32))
 
@@ -319,6 +321,7 @@ def ppo(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
             epoch_ended = t==local_steps_per_epoch-1
 
             if terminal or epoch_ended:
+                #Ep += 1#計算使用天數
                 if epoch_ended and not(terminal):
                     print('Warning: trajectory cut off by epoch at %d steps.'%ep_len, flush=True)
                 # if trajectory didn't reach terminal state, bootstrap value target
@@ -335,6 +338,7 @@ def ppo(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
 
         # Perform PPO update!
         update()
+        #logger.log('################## %d'%Ep)#計算使用天數
 
         # Log info about epoch
         logger.log_tabular('Epoch', epoch)
