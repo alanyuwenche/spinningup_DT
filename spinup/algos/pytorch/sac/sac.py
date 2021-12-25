@@ -176,6 +176,12 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
     var_counts = tuple(core.count_vars(module) for module in [ac.pi, ac.q1, ac.q2])
     logger.log('\nNumber of parameters: \t pi: %d, \t q1: %d, \t q2: %d\n'%var_counts)
 
+    def action_tensor_transform(actions, n): #20211225
+        onehot = torch.zeros((actions.size()[0], n))
+        onehot[torch.arange(actions.size()[0]), actions] = 1
+        onehot = onehot.clone().detach().requires_grad_(True)
+        return onehot
+
     # Set up function for computing SAC Q-losses
     def compute_loss_q(data):
         o, a, r, o2, d = data['obs'], data['act'], data['rew'], data['obs2'], data['done']
@@ -187,19 +193,23 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         with torch.no_grad():
             # Target actions come from *current* policy
             a2, logp_a2 = ac.pi(o2)
-            a2 = a2.sample().item()
+            aa1 = a2.sample()#20211225
+            aa2 = action_tensor_transform(aa1, 3)#20211225
+
             # Target Q-values
-            q1_pi_targ = ac_targ.q1(o2, a2)
-            q2_pi_targ = ac_targ.q2(o2, a2)
-            q_pi_targ = torch.min(q1_pi_targ, q2_pi_targ)
-            backup = r + gamma * (1 - d) * (q_pi_targ - alpha * logp_a2)
+            #q1_pi_targ = ac_targ.q1(o2, a2)
+            #q2_pi_targ = ac_targ.q2(o2, a2)
+            q1_pi_targ = ac_targ.q1(o2, aa2)#20211225_torch.Size([100])
+            q2_pi_targ = ac_targ.q2(o2, aa2)#20211225
+            q_pi_targ = torch.min(q1_pi_targ, q2_pi_targ)#torch.Size([100])
+            #backup = r + gamma * (1 - d) * (q_pi_targ - alpha * logp_a2)
+            backup = r + gamma * (1 - d) * q_pi_targ#20211225
 
         # MSE loss against Bellman backup
         loss_q1 = ((q1 - backup)**2).mean()
         loss_q2 = ((q2 - backup)**2).mean()
         loss_q = loss_q1 + loss_q2
-        logger.log('*************************')
-
+        
         # Useful info for logging
         q_info = dict(Q1Vals=q1.detach().numpy(),
                       Q2Vals=q2.detach().numpy())
@@ -210,12 +220,18 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
     def compute_loss_pi(data):
         o = data['obs']
         pi, logp_pi = ac.pi(o)
-        q1_pi = ac.q1(o, pi)
-        q2_pi = ac.q2(o, pi)
+        aa1 = pi.sample()#20211225
+        aa2 = action_tensor_transform(aa1, 3)#20211225
+
+        #q1_pi = ac.q1(o, pi)
+        #q2_pi = ac.q2(o, pi)
+        q1_pi = ac.q1(o, aa2)#20211225
+        q2_pi = ac.q2(o, aa2)#20211225
         q_pi = torch.min(q1_pi, q2_pi)
 
         # Entropy-regularized policy loss
-        loss_pi = (alpha * logp_pi - q_pi).mean()
+        #loss_pi = (alpha * logp_pi - q_pi).mean()
+        loss_pi = -q_pi.mean()#20211225
 
         # Useful info for logging
         pi_info = dict(LogPi=logp_pi.detach().numpy())
@@ -246,6 +262,7 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
 
         # Next run one gradient descent step for pi.
         pi_optimizer.zero_grad()
+        print('OOOOOOOOOOOOOOOOOOOOOOOOOOO')
         loss_pi, pi_info = compute_loss_pi(data)
         loss_pi.backward()
         pi_optimizer.step()
