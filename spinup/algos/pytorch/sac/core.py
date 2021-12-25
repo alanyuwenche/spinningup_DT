@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
-
+from torch.distributions.categorical import Categorical
 
 def combined_shape(length, shape=None):
     if shape is None:
@@ -66,6 +66,38 @@ class SquashedGaussianMLPActor(nn.Module):
 
         return pi_action, logp_pi
 
+class Actor(nn.Module):#20211222
+
+    def _distribution(self, obs):
+        raise NotImplementedError
+
+    def _log_prob_from_distribution(self, pi, act):
+        raise NotImplementedError
+
+    def forward(self, obs, act=None):
+        # Produce action distributions for given observations, and 
+        # optionally compute the log likelihood of given actions under
+        # those distributions.
+        pi = self._distribution(obs)
+        logp_a = None
+        if act is not None:
+            logp_a = self._log_prob_from_distribution(pi, act)
+        return pi, logp_a
+
+
+class MLPCategoricalActor(Actor):#20211222
+    
+    def __init__(self, obs_dim, act_dim, hidden_sizes, activation):
+        super().__init__()
+        self.logits_net = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)
+
+    def _distribution(self, obs):
+        logits = self.logits_net(obs)
+        return Categorical(logits=logits)
+
+    def _log_prob_from_distribution(self, pi, act):
+        return pi.log_prob(act)
+
 
 class MLPQFunction(nn.Module):
 
@@ -79,16 +111,23 @@ class MLPQFunction(nn.Module):
 
 class MLPActorCritic(nn.Module):
 
-    def __init__(self, observation_space, action_space, hidden_sizes=(256,256),
-                 activation=nn.ReLU):
+    #def __init__(self, observation_space, action_space, hidden_sizes=(256,256),
+    #             activation=nn.ReLU):
+    def __init__(self, observation_space, action_space, 
+                 hidden_sizes=(64,64), activation=nn.Tanh):#20211223
         super().__init__()
 
-        obs_dim = observation_space.shape[0]
-        act_dim = action_space.shape[0]
-        act_limit = action_space.high[0]
+        #obs_dim = observation_space.shape[0]
+        #act_dim = action_space.shape[0]
+        obs_dim = observation_space.shape[0]#20211222
+        act_dim = action_space.n #20211222
+        #act_limit = action_space.high[0] #20211222
 
+
+    
         # build policy and value functions
-        self.pi = SquashedGaussianMLPActor(obs_dim, act_dim, hidden_sizes, activation, act_limit)
+        #self.pi = SquashedGaussianMLPActor(obs_dim, act_dim, hidden_sizes, activation, act_limit)    
+        self.pi = MLPCategoricalActor(obs_dim, act_dim, hidden_sizes, activation)#20211222
         self.q1 = MLPQFunction(obs_dim, act_dim, hidden_sizes, activation)
         self.q2 = MLPQFunction(obs_dim, act_dim, hidden_sizes, activation)
 

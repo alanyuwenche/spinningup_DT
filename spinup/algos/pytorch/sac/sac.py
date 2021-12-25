@@ -7,6 +7,7 @@ import gym
 import time
 import spinup.algos.pytorch.sac.core as core
 from spinup.utils.logx import EpochLogger
+import torch.nn.functional as F
 
 
 class ReplayBuffer:
@@ -151,11 +152,11 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
     np.random.seed(seed)
 
     env, test_env = env_fn(), env_fn()
-    obs_dim = env.observation_space.shape
-    act_dim = env.action_space.shape[0]
+    obs_dim = env.observation_space.shape[0]#20211222
+    act_dim = env.action_space.n #20211222
 
     # Action limit for clamping: critically, assumes all dimensions share the same bound!
-    act_limit = env.action_space.high[0]
+    #act_limit = env.action_space.high[0] #20211222
 
     # Create actor-critic module and target networks
     ac = actor_critic(env.observation_space, env.action_space, **ac_kwargs)
@@ -186,7 +187,7 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         with torch.no_grad():
             # Target actions come from *current* policy
             a2, logp_a2 = ac.pi(o2)
-
+            a2 = a2.sample().item()
             # Target Q-values
             q1_pi_targ = ac_targ.q1(o2, a2)
             q2_pi_targ = ac_targ.q2(o2, a2)
@@ -197,6 +198,7 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         loss_q1 = ((q1 - backup)**2).mean()
         loss_q2 = ((q2 - backup)**2).mean()
         loss_q = loss_q1 + loss_q2
+        logger.log('*************************')
 
         # Useful info for logging
         q_info = dict(Q1Vals=q1.detach().numpy(),
