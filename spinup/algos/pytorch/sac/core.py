@@ -93,7 +93,11 @@ class MLPCategoricalActor(Actor):#20211222
 
     def _distribution(self, obs):
         logits = self.logits_net(obs)
-        return Categorical(logits=logits)
+        m = nn.Softmax(dim=1)
+        ll = m(logits)
+
+        #return Categorical(logits=logits)
+        return ll#20211227
 
     def _log_prob_from_distribution(self, pi, act):
         return pi.log_prob(act)
