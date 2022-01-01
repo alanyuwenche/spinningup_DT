@@ -166,7 +166,7 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
     #act_limit = env.action_space.high[0] #20211222
 
     # Create actor-critic module and target networks
-    ac = actor_critic(env.observation_space, env.action_space, **ac_kwargs)#有問題
+    ac = actor_critic(env.observation_space, env.action_space, **ac_kwargs)
     ac_targ = deepcopy(ac)
 
     # Freeze target networks with respect to optimizers (only update via polyak averaging)
@@ -186,19 +186,18 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
     # Set up function for computing SAC Q-losses
     def compute_loss_q(data):
         o, a, r, o2, d = data['obs'], data['act'], data['rew'], data['obs2'], data['done']
-
         #q1 = ac.q1(o,a)#有問題
         #q2 = ac.q2(o,a)
-        q1 = ac.q1(o,action_tensor_transform(a, 3))#20211225
-        q2 = ac.q2(o,action_tensor_transform(a, 3))#20211225
-        
+        q1 = ac.q1(o,action_tensor_transform(a, 2))#20211225
+        q2 = ac.q2(o,action_tensor_transform(a, 2))#20211225
+
         # Bellman backup for Q functions
         with torch.no_grad():
             # Target actions come from *current* policy
             #a2, logp_a2 = ac.pi(o2)
             a2, logp_a2 = ac.pi(o2, a)#20211225
             aa1 = a2.sample()#20211225
-            aa2 = action_tensor_transform(aa1, 3)#20211225
+            aa2 = action_tensor_transform(aa1, 2)#20211225
 
             # Target Q-values
             #q1_pi_targ = ac_targ.q1(o2, a2)
@@ -226,7 +225,7 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         #pi, logp_pi = ac.pi(o)
         pi, logp_pi = ac.pi(o, a)#20211225
         aa1 = pi.sample()#20211225
-        aa2 = action_tensor_transform(aa1, 3)#20211225
+        aa2 = action_tensor_transform(aa1, 2)#20211225
 
         #q1_pi = ac.q1(o, pi)
         #q2_pi = ac.q2(o, pi)
@@ -236,7 +235,6 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
 
         # Entropy-regularized policy loss
         loss_pi = (alpha * logp_pi - q_pi).mean()
-        #loss_pi = -q_pi.mean()#20211225
 
         # Useful info for logging
         pi_info = dict(LogPi=logp_pi.detach().numpy())
@@ -340,6 +338,9 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
         # Update handling
         if t >= update_after and t % update_every == 0:
             for j in range(update_every):
+                #print('324  replay_buffer.done_buf[:20]',replay_buffer.done_buf[190:210])
+                #print('324  replay_buffer.obs_buf[:20]',replay_buffer.obs_buf[190:210])
+                #print('324  replay_buffer.act_buf[:20]',replay_buffer.act_buf[190:210])
                 batch = replay_buffer.sample_batch(batch_size)
                 update(data=batch)
 
