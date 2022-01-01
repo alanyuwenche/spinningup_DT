@@ -207,7 +207,6 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
             q2_pi_targ = ac_targ.q2(o2, aa2)#20211225
             q_pi_targ = torch.min(q1_pi_targ, q2_pi_targ)#torch.Size([100])
             backup = r + gamma * (1 - d) * (q_pi_targ - alpha * logp_a2)
-            #backup = r + gamma * (1 - d) * q_pi_targ#20211225
 
         # MSE loss against Bellman backup
         loss_q1 = ((q1 - backup)**2).mean()
@@ -295,8 +294,7 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
 
             while not(d or (ep_len == max_ep_len)):
                 # Take deterministic actions at test time
-                aaa = get_action(o, True)
-                o, r, d, _ = test_env.step(aaa)
+                o, r, d, _ = test_env.step(get_action(o, True))
                 ep_ret += r
                 ep_len += 1
             logger.store(TestEpRet=ep_ret, TestEpLen=ep_len)
@@ -355,7 +353,7 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
 
             # Test the performance of the deterministic version of the agent.
             test_agent()
-            #print('L357L357L357L357L357L357')
+
             # Log info about epoch
             logger.log_tabular('Epoch', epoch)
             logger.log_tabular('EpRet', with_min_and_max=True)
@@ -370,7 +368,6 @@ def sac(env_fn, actor_critic=core.MLPActorCritic, ac_kwargs=dict(), seed=0,
             logger.log_tabular('LossQ', average_only=True)
             logger.log_tabular('Time', time.time()-start_time)
             logger.dump_tabular()
-            #print('L372L372L372L372L372L372')
 
 if __name__ == '__main__':
     import argparse
